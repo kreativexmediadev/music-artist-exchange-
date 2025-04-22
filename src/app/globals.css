@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 0, 0, 0;
+  --background-end-rgb: 0, 0, 0;
+  --background-rgb: 17, 23, 41;
+  --accent-yellow: 255, 198, 0;
+}
+
+@layer base {
+  html {
+    @apply h-full;
+  }
+  body {
+    @apply bg-dark text-white h-full text-gray-100;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-accent-yellow text-dark font-semibold px-4 py-2 rounded-lg hover:bg-accent-yellowHover transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-secondary {
+    @apply bg-dark-card text-white font-semibold px-4 py-2 rounded-lg border border-accent-yellow hover:bg-accent-yellow hover:text-dark transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .card {
+    @apply bg-dark-card rounded-lg shadow-lg;
+  }
+
+  .input {
+    @apply bg-dark border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-accent-yellow focus:border-transparent;
+  }
+}
+
+/* Trading specific styles */
+.price-up {
+  @apply text-green-400;
+}
+
+.price-down {
+  @apply text-red-400;
+}
+
+.trading-grid {
+  display: grid;
+  grid-template-columns: 300px 1fr 300px;
+  gap: 1rem;
+  height: calc(100vh - 64px);
+  @apply bg-dark p-4;
+}
+
+/* Chart customization */
+.chart-container {
+  @apply bg-dark-card rounded-lg border border-gray-800;
+}
+
+/* Navbar customization */
+.navbar {
+  @apply bg-dark-card border-b border-gray-800;
+}
+
+/* Order book customization */
+.order-book-row {
+  @apply hover:bg-dark-hover transition-colors;
+}
+
+.depth-bg-buy {
+  @apply bg-green-500/10;
+}
+
+.depth-bg-sell {
+  @apply bg-red-500/10;
+}
+
+/* Button states */
+.active-buy {
+  @apply bg-green-500 text-white;
+}
+
+.active-sell {
+  @apply bg-red-500 text-white;
+}
+
+/* Table styles */
+.table-header {
+  @apply text-gray-400 text-xs uppercase;
+}
+
+/* Scrollbar customization */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-dark;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-700 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-600;
+} 

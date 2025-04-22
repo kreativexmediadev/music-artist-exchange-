@@ -1,0 +1,152 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Artist {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  name          String
+  imageUrl      String?
+  genre         String
+  tokenSymbol   String   @unique
+  currentPrice  Float
+  priceChange24h Float
+  marketCap     Float
+  verified      Boolean  @default(false)
+  metrics       ArtistMetrics?
+  orders        Order[]
+  trades        Trade[]
+  portfolios    Portfolio[]
+}
+
+model ArtistMetrics {
+  id          String   @id @default(cuid())
+  artistId    String   @unique
+  artist      Artist   @relation(fields: [artistId], references: [id])
+  social      SocialMetrics?
+  financial   FinancialMetrics?
+  technical   TechnicalMetrics?
+}
+
+model SocialMetrics {
+  id                  String   @id @default(cuid())
+  metricsId          String   @unique
+  metrics            ArtistMetrics @relation(fields: [metricsId], references: [id])
+  monthlyListeners    Int
+  spotifyFollowers    Int
+  topTracks          Json     // Array of { name: string, streams: string }
+  instagramFollowers  Int
+  instagramEngagement Float
+  instagramPosts30d   Int
+  twitterFollowers    Int
+  twitterEngagement   Float
+  twitterPosts30d     Int
+}
+
+model FinancialMetrics {
+  id               String   @id @default(cuid())
+  metricsId       String   @unique
+  metrics         ArtistMetrics @relation(fields: [metricsId], references: [id])
+  revenueStreams  Json     // Array of { source: string, percentage: number }
+  quarterlyRevenue Json     // Array of { quarter: string, amount: number }
+}
+
+model TechnicalMetrics {
+  id                String   @id @default(cuid())
+  metricsId        String   @unique
+  metrics          ArtistMetrics @relation(fields: [metricsId], references: [id])
+  rsi              Float
+  macd             Float
+  movingAverage50d Float
+  movingAverage200d Float
+  sentimentOverall String
+  sentimentScore   Int
+  newsCount30d     Int
+  socialMentions30d Int
+}
+
+model User {
+  id            String      @id @default(cuid())
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  email         String      @unique
+  name          String?
+  image         String?
+  emailVerified DateTime?
+  orders        Order[]
+  portfolios    Portfolio[]
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  artistId      String
+  artist        Artist      @relation(fields: [artistId], references: [id])
+  type          OrderType
+  orderType     OrderType2  @default(LIMIT)
+  amount        Float
+  price         Float
+  status        OrderStatus @default(PENDING)
+  buyTrades     Trade[]     @relation("BuyOrder")
+  sellTrades    Trade[]     @relation("SellOrder")
+  filledAmount  Float       @default(0)
+  remainingAmount Float     @default(0)
+  expiresAt     DateTime?
+}
+
+model Trade {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  artistId      String
+  artist        Artist   @relation(fields: [artistId], references: [id])
+  buyOrderId    String
+  buyOrder      Order    @relation("BuyOrder", fields: [buyOrderId], references: [id])
+  sellOrderId   String
+  sellOrder     Order    @relation("SellOrder", fields: [sellOrderId], references: [id])
+  amount        Float
+  price         Float
+  timestamp     DateTime @default(now())
+}
+
+model Portfolio {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  artistId  String
+  artist    Artist   @relation(fields: [artistId], references: [id])
+  amount    Float
+
+  @@unique([userId, artistId])
+}
+
+enum OrderType {
+  BUY
+  SELL
+}
+
+enum OrderType2 {
+  MARKET
+  LIMIT
+}
+
+enum OrderStatus {
+  PENDING
+  PARTIALLY_FILLED
+  FILLED
+  CANCELLED
+  EXPIRED
+} 
