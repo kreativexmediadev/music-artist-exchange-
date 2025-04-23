@@ -164,4 +164,18 @@ Please read our contributing guidelines before submitting pull requests.
 
 ## 📝 License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Development Workflow
+
+### After Major Feature Updates
+After completing major feature updates, remember to:
+1. Commit your changes
+2. Run the push reminder script:
+   ```bash
+   ./push-reminder.sh
+   ```
+This will check for unpushed changes and help you keep your repository up to date.
+
+### Testing the Push Reminder
+This is a test line to demonstrate the push reminder functionality. 
