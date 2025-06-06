@@ -1,79 +1,66 @@
-import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { SpotifyService } from '@/services/spotifyService'
-import { OrderStatus } from '@prisma/client'
+import { spotifyService } from '@/services/spotifyService'
+import { NextResponse } from 'next/server'
 
 export async function GET(
-  request: NextRequest,
+  request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    console.log('Fetching artist with ID:', params.id);
-    
-    // Get artist data from database
-    const artist = await prisma.artist.findUnique({
-      where: { id: params.id },
-      include: {
-        metrics: true,
-        orders: {
-          where: { status: OrderStatus.OPEN },
-          orderBy: { createdAt: 'desc' },
-          take: 10,
-        },
-      },
-    })
+    const { id } = params;
 
-    if (!artist) {
-      console.log('Artist not found in database');
+    // Get artist from database
+    const dbArtist = await prisma.artist.findUnique({
+      where: { id },
+      include: {
+        orderbook: {
+          include: {
+            orders: {
+              orderBy: {
+                price: 'desc'
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!dbArtist) {
       return NextResponse.json(
         { error: 'Artist not found' },
         { status: 404 }
-      )
+      );
     }
 
-    console.log('Found artist in database:', artist.name);
+    // Get artist data from Spotify
+    const spotifyArtist = await spotifyService.getArtist(dbArtist.spotifyId);
 
-    // Get Spotify data
-    let spotifyData = null;
-    try {
-      const spotify = SpotifyService.getInstance()
-      console.log('Searching Spotify for artist:', artist.name);
-      
-      // First try to find the artist by name
-      const searchResults = await spotify.searchArtists(artist.name)
-      
-      if (searchResults.length > 0) {
-        // Find the best match based on name similarity
-        const bestMatch = searchResults.find(result => 
-          result.name.toLowerCase() === artist.name.toLowerCase()
-        ) || searchResults[0];
-        
-        console.log('Found artist on Spotify:', bestMatch.name);
-        spotifyData = await spotify.getArtist(bestMatch.id)
-      } else {
-        console.log('No matching artist found on Spotify');
-      }
-    } catch (spotifyError) {
-      console.error('Spotify API error:', spotifyError);
-      // Continue with just the database data if Spotify fails
+    if (!spotifyArtist) {
+      return NextResponse.json(
+        { error: 'Failed to fetch artist data from Spotify' },
+        { status: 500 }
+      );
     }
 
-    // Combine data
-    const response = {
-      ...artist,
-      spotify: spotifyData,
-    }
+    // Combine database and Spotify data
+    const artist = {
+      ...dbArtist,
+      ...spotifyArtist,
+      monthlyListeners: spotifyArtist.monthlyListeners || 0,
+      followers: spotifyArtist.followers || 0,
+      popularity: spotifyArtist.popularity || 0,
+      genres: spotifyArtist.genres || [],
+      topTracks: spotifyArtist.topTracks || [],
+      relatedArtists: spotifyArtist.relatedArtists || [],
+      albums: spotifyArtist.albums || []
+    };
 
-    return NextResponse.json(response)
+    return NextResponse.json(artist);
   } catch (error) {
-    console.error('Error fetching artist data:', error)
+    console.error('Error fetching artist:', error);
     return NextResponse.json(
-      { 
-        error: 'Failed to fetch artist data', 
-        details: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString()
-      },
+      { error: 'Failed to fetch artist data' },
       { status: 500 }
-    )
+    );
   }
 } 

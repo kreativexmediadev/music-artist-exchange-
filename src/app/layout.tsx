@@ -1,13 +1,14 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import { Providers } from './providers'
 import './globals.css'
+import { AuthProvider } from '@/components/AuthProvider'
+import { Navigation } from '@/components/Navigation'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Music Artist Exchange (MAX)',
-  description: 'The world\'s first music artist trading exchange',
+  title: 'Artist Exchange',
+  description: 'Trade and invest in your favorite artists',
 }
 
 export default function RootLayout({
@@ -16,9 +17,14 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="h-full">
-      <body className={`${inter.className} min-h-full bg-dark`}>
-        <Providers>{children}</Providers>
+    <html lang="en">
+      <body className={inter.className}>
+        <AuthProvider>
+          <Navigation />
+          <main className="min-h-screen bg-gray-900">
+            {children}
+          </main>
+        </AuthProvider>
       </body>
     </html>
   )

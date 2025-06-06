@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { hash } from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -12,119 +13,128 @@ async function main() {
   await prisma.artistMetrics.deleteMany();
   await prisma.artist.deleteMany();
 
-  // Create sample artists
+  // Create a test user
+  const testUser = await prisma.user.upsert({
+    where: { email: 'test@example.com' },
+    update: {},
+    create: {
+      email: 'test@example.com',
+      name: 'Test User',
+      password: await hash('password123', 12),
+    },
+  });
+
+  // Create dummy artists
   const artists = [
     {
-      name: 'Taylor Swift',
-      imageUrl: 'https://i.scdn.co/image/ab6761610000e5eb5a00969a4698c3132a15fbb0',
-      genre: 'Pop',
-      tokenSymbol: 'SWIFT',
-      currentPrice: 150.75,
-      priceChange24h: 5.2,
-      marketCap: 1500000000,
-      verified: true,
+      name: 'Luna Nova',
+      genre: 'Electronic',
+      bio: 'Rising star in the electronic music scene, known for ethereal soundscapes and innovative beats.',
+      image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=500&h=500&fit=crop',
+      socialLinks: {
+        spotify: 'https://open.spotify.com/artist/luna-nova',
+        instagram: 'https://instagram.com/luna-nova',
+        twitter: 'https://twitter.com/luna-nova',
+        youtube: 'https://youtube.com/luna-nova',
+        website: 'https://luna-nova.com',
+      },
+      tokenSupply: 1000,
+      tokensSold: 200,
     },
     {
-      name: 'Drake',
-      imageUrl: 'https://i.scdn.co/image/ab6761610000e5eb4293385d324db8558179afd9',
+      name: 'The Midnight Riders',
+      genre: 'Rock',
+      bio: 'High-energy rock band bringing back the classic sound with a modern twist.',
+      image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&h=500&fit=crop',
+      socialLinks: {
+        spotify: 'https://open.spotify.com/artist/midnight-riders',
+        instagram: 'https://instagram.com/midnight-riders',
+        twitter: 'https://twitter.com/midnight-riders',
+        youtube: 'https://youtube.com/midnight-riders',
+        website: 'https://midnight-riders.com',
+      },
+      tokenSupply: 2000,
+      tokensSold: 500,
+    },
+    {
+      name: 'Jazz Collective',
+      genre: 'Jazz',
+      bio: 'Innovative jazz ensemble pushing the boundaries of traditional jazz music.',
+      image: 'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=500&h=500&fit=crop',
+      socialLinks: {
+        spotify: 'https://open.spotify.com/artist/jazz-collective',
+        instagram: 'https://instagram.com/jazz-collective',
+        twitter: 'https://twitter.com/jazz-collective',
+        youtube: 'https://youtube.com/jazz-collective',
+        website: 'https://jazz-collective.com',
+      },
+      tokenSupply: 1500,
+      tokensSold: 750,
+    },
+    {
+      name: 'Hip Hop Visionaries',
       genre: 'Hip Hop',
-      tokenSymbol: 'DRAKE',
-      currentPrice: 120.50,
-      priceChange24h: -2.1,
-      marketCap: 1200000000,
-      verified: true,
+      bio: 'Groundbreaking hip hop group known for their thought-provoking lyrics and innovative production.',
+      image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&h=500&fit=crop',
+      socialLinks: {
+        spotify: 'https://open.spotify.com/artist/hip-hop-visionaries',
+        instagram: 'https://instagram.com/hip-hop-visionaries',
+        twitter: 'https://twitter.com/hip-hop-visionaries',
+        youtube: 'https://youtube.com/hip-hop-visionaries',
+        website: 'https://hip-hop-visionaries.com',
+      },
+      tokenSupply: 3000,
+      tokensSold: 1200,
     },
     {
-      name: 'Ed Sheeran',
-      imageUrl: 'https://i.scdn.co/image/ab6761610000e5eb3bcef85e105dfc42399ef0ba',
-      genre: 'Pop',
-      tokenSymbol: 'SHEER',
-      currentPrice: 90.25,
-      priceChange24h: 1.8,
-      marketCap: 900000000,
-      verified: true,
-    },
-    {
-      name: 'Billie Eilish',
-      imageUrl: 'https://i.scdn.co/image/ab6761610000e5eb7b9e5ae06cd6c5de3bbd3bf6',
-      genre: 'Alternative',
-      tokenSymbol: 'EILISH',
-      currentPrice: 85.60,
-      priceChange24h: 3.4,
-      marketCap: 850000000,
-      verified: true,
-    },
-    {
-      name: 'The Weeknd',
-      imageUrl: 'https://i.scdn.co/image/ab6761610000e5eb214f3cf1cbe7139c1e26ffbb',
-      genre: 'R&B',
-      tokenSymbol: 'WKND',
-      currentPrice: 110.30,
-      priceChange24h: -1.5,
-      marketCap: 1100000000,
-      verified: true,
+      name: 'Classical Harmony',
+      genre: 'Classical',
+      bio: 'Renowned classical ensemble bringing timeless compositions to modern audiences.',
+      image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&h=500&fit=crop',
+      socialLinks: {
+        spotify: 'https://open.spotify.com/artist/classical-harmony',
+        instagram: 'https://instagram.com/classical-harmony',
+        twitter: 'https://twitter.com/classical-harmony',
+        youtube: 'https://youtube.com/classical-harmony',
+        website: 'https://classical-harmony.com',
+      },
+      tokenSupply: 2500,
+      tokensSold: 300,
     },
   ];
 
+  // Create artists and their portfolios
   for (const artistData of artists) {
     const artist = await prisma.artist.create({
       data: artistData,
     });
 
-    // Create metrics for each artist
-    const metrics = await prisma.artistMetrics.create({
+    // Create portfolio entry for test user
+    await prisma.portfolio.create({
       data: {
+        userId: testUser.id,
         artistId: artist.id,
-        social: {
-          create: {
-            monthlyListeners: Math.floor(Math.random() * 50000000) + 10000000,
-            spotifyFollowers: Math.floor(Math.random() * 30000000) + 5000000,
-            topTracks: JSON.stringify([
-              { name: 'Top Track 1', streams: '1.2M' },
-              { name: 'Top Track 2', streams: '900K' },
-              { name: 'Top Track 3', streams: '750K' },
-            ]),
-            instagramFollowers: Math.floor(Math.random() * 100000000) + 10000000,
-            instagramEngagement: Math.random() * 5 + 1,
-            instagramPosts30d: Math.floor(Math.random() * 30) + 5,
-            twitterFollowers: Math.floor(Math.random() * 50000000) + 5000000,
-            twitterEngagement: Math.random() * 3 + 0.5,
-            twitterPosts30d: Math.floor(Math.random() * 100) + 20,
-          },
-        },
-        financial: {
-          create: {
-            revenueStreams: JSON.stringify([
-              { source: 'Streaming', percentage: 45 },
-              { source: 'Tours', percentage: 30 },
-              { source: 'Merchandise', percentage: 15 },
-              { source: 'Other', percentage: 10 },
-            ]),
-            quarterlyRevenue: JSON.stringify([
-              { quarter: 'Q1 2023', amount: Math.floor(Math.random() * 10000000) + 5000000 },
-              { quarter: 'Q2 2023', amount: Math.floor(Math.random() * 10000000) + 5000000 },
-              { quarter: 'Q3 2023', amount: Math.floor(Math.random() * 10000000) + 5000000 },
-              { quarter: 'Q4 2023', amount: Math.floor(Math.random() * 10000000) + 5000000 },
-            ]),
-          },
-        },
-        technical: {
-          create: {
-            rsi: Math.random() * 60 + 20,
-            macd: Math.random() * 20 - 10,
-            movingAverage50d: artistData.currentPrice * (1 + (Math.random() * 0.2 - 0.1)),
-            movingAverage200d: artistData.currentPrice * (1 + (Math.random() * 0.4 - 0.2)),
-            sentimentOverall: ['bullish', 'neutral', 'bearish'][Math.floor(Math.random() * 3)],
-            sentimentScore: Math.floor(Math.random() * 100),
-            newsCount30d: Math.floor(Math.random() * 1000) + 100,
-            socialMentions30d: Math.floor(Math.random() * 100000) + 10000,
-          },
-        },
+        amount: Math.floor(Math.random() * 100) + 50, // Random amount between 50-150
       },
     });
 
-    console.log(`Created artist ${artist.name} with metrics`);
+    // Create some token transactions
+    const transactionAmounts = [20, 30, 50, 75, 100];
+    for (const amount of transactionAmounts) {
+      await prisma.tokenTransaction.create({
+        data: {
+          artistId: artist.id,
+          userId: testUser.id,
+          amount,
+          priceAtPurchase: 1 + (Math.random() * 0.5), // Random price between $1-$1.50
+          type: 'BUY',
+          timestamp: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000), // Random date in last 30 days
+        },
+      });
+    }
   }
+
+  console.log('Seed data created successfully!');
 }
 
 main()

@@ -1,0 +1,49 @@
+feature:
+  - 'feature/**'
+  - 'feat/**'
+  - '**/feature/**'
+  - '**/feat/**'
+
+bug:
+  - 'bug/**'
+  - 'fix/**'
+  - '**/bug/**'
+  - '**/fix/**'
+
+documentation:
+  - 'docs/**'
+  - '**/docs/**'
+  - '*.md'
+  - '**/*.md'
+
+test:
+  - 'test/**'
+  - '**/test/**'
+  - '**/*.test.*'
+  - '**/*.spec.*'
+
+dependencies:
+  - 'package.json'
+  - 'package-lock.json'
+  - 'yarn.lock'
+  - 'pnpm-lock.yaml'
+
+security:
+  - 'security/**'
+  - '**/security/**'
+
+performance:
+  - 'perf/**'
+  - '**/perf/**'
+
+refactor:
+  - 'refactor/**'
+  - '**/refactor/**'
+
+style:
+  - 'style/**'
+  - '**/style/**'
+
+chore:
+  - 'chore/**'
+  - '**/chore/**' 

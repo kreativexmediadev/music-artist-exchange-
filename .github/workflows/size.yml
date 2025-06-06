@@ -1,0 +1,30 @@
+name: Bundle Size
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  size:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Build
+      run: npm run build
+    
+    - name: Track bundle size
+      uses: preactjs/compressed-size-action@v2
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        pattern: '.next/static/**/*.js' 

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { RegisterRequest, AuthResponse } from '@/types/auth';
 import { validateEmail } from '@/utils/auth';
+import { prisma } from '@/lib/prisma';
+import bcrypt from 'bcryptjs';
 
 export async function POST(request: Request) {
   try {
@@ -31,22 +33,47 @@ export async function POST(request: Request) {
       );
     }
 
-    // TODO: Add actual user creation logic here
-    // This is a placeholder for demonstration
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email }
+    });
+
+    if (existingUser) {
+      return NextResponse.json(
+        { success: false, error: 'User with this email already exists' },
+        { status: 400 }
+      );
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create user
+    const user = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        firstName,
+        lastName,
+        role,
+        name: `${firstName} ${lastName}`,
+      },
+    });
+
     const response: AuthResponse = {
       success: true,
       message: 'Registration successful',
       data: {
         user: {
-          id: 'temp-id',
-          email,
-          firstName,
-          lastName,
-          role,
-          emailVerified: false,
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          emailVerified: !!user.emailVerified,
           twoFactorEnabled: false,
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
         },
       },
     };

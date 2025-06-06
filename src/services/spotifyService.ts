@@ -1,4 +1,5 @@
 import SpotifyWebApi from 'spotify-web-api-node'
+import { Artist } from '@prisma/client'
 
 const spotifyApi = new SpotifyWebApi({
   clientId: process.env.SPOTIFY_CLIENT_ID,
@@ -11,7 +12,7 @@ const spotifyApi = new SpotifyWebApi({
 export class SpotifyService {
   private static instance: SpotifyService
   private accessToken: string | null = null
-  private tokenExpirationTime: number = 0
+  private tokenExpiration: number = 0
 
   private constructor() {}
 
@@ -25,21 +26,16 @@ export class SpotifyService {
     return SpotifyService.instance
   }
 
-  /**
-   * Ensure we have a valid access token
-   */
-  private async ensureAccessToken(): Promise<void> {
-    const now = Date.now()
-    if (!this.accessToken || now >= this.tokenExpirationTime) {
+  private async ensureValidToken() {
+    if (!this.accessToken || Date.now() >= this.tokenExpiration) {
       try {
         const data = await spotifyApi.clientCredentialsGrant()
         this.accessToken = data.body.access_token
-        this.tokenExpirationTime = now + data.body.expires_in * 1000
+        this.tokenExpiration = Date.now() + (data.body.expires_in * 1000)
         spotifyApi.setAccessToken(this.accessToken)
-        console.log('Successfully obtained Spotify access token')
       } catch (error) {
-        console.error('Failed to obtain Spotify access token:', error)
-        throw new Error('Failed to authenticate with Spotify API')
+        console.error('Error getting Spotify access token:', error)
+        throw new Error('Failed to authenticate with Spotify')
       }
     }
   }
@@ -49,68 +45,49 @@ export class SpotifyService {
    * @param spotifyId - Spotify artist ID
    */
   public async getArtist(spotifyId: string) {
-    await this.ensureAccessToken()
-    
     try {
-      // Get artist data
-      const artistData = await spotifyApi.getArtist(spotifyId)
-      
-      // Get additional data in parallel
-      const [topTracks, relatedArtists, albums] = await Promise.all([
+      await this.ensureValidToken()
+
+      const [artist, topTracks, relatedArtists, albums] = await Promise.all([
+        spotifyApi.getArtist(spotifyId),
         spotifyApi.getArtistTopTracks(spotifyId, 'US'),
         spotifyApi.getArtistRelatedArtists(spotifyId),
-        spotifyApi.getArtistAlbums(spotifyId, { limit: 50 })
+        spotifyApi.getArtistAlbums(spotifyId, { limit: 10 })
       ])
 
-      // Calculate total monthly listeners from top tracks
-      const monthlyListeners = topTracks.body.tracks.reduce(
-        (sum, track) => sum + (track.popularity * 100000), // Rough estimate based on popularity
-        0
-      )
+      // Calculate monthly listeners (this is an estimate since Spotify doesn't provide this directly)
+      const monthlyListeners = Math.floor(artist.body.followers.total * 0.1)
 
       return {
-        id: artistData.body.id,
-        name: artistData.body.name,
-        imageUrl: artistData.body.images[0]?.url,
-        genres: artistData.body.genres,
-        popularity: artistData.body.popularity,
-        followers: artistData.body.followers.total,
+        id: artist.body.id,
+        name: artist.body.name,
+        imageUrl: artist.body.images[0]?.url || null,
+        followers: artist.body.followers.total,
+        popularity: artist.body.popularity,
+        genres: artist.body.genres,
         monthlyListeners,
-        externalUrls: artistData.body.external_urls,
-        href: artistData.body.href,
-        uri: artistData.body.uri,
         topTracks: topTracks.body.tracks.map(track => ({
           id: track.id,
           name: track.name,
-          popularity: track.popularity,
           previewUrl: track.preview_url,
-          albumArt: track.album.images[0]?.url,
-          releaseDate: track.album.release_date,
-          externalUrls: track.external_urls,
-          uri: track.uri,
+          durationMs: track.duration_ms,
+          popularity: track.popularity
         })),
         relatedArtists: relatedArtists.body.artists.map(artist => ({
           id: artist.id,
           name: artist.name,
-          imageUrl: artist.images[0]?.url,
-          genres: artist.genres,
-          popularity: artist.popularity,
-          externalUrls: artist.external_urls,
-          uri: artist.uri,
+          imageUrl: artist.images[0]?.url || null
         })),
         albums: albums.body.items.map(album => ({
           id: album.id,
           name: album.name,
-          imageUrl: album.images[0]?.url,
+          imageUrl: album.images[0]?.url || null,
           releaseDate: album.release_date,
-          totalTracks: album.total_tracks,
-          type: album.album_type,
-          externalUrls: album.external_urls,
-          uri: album.uri,
-        })),
+          totalTracks: album.total_tracks
+        }))
       }
     } catch (error) {
-      console.error('Error fetching artist data from Spotify:', error)
+      console.error('Error fetching artist from Spotify:', error)
       throw error
     }
   }
@@ -120,22 +97,48 @@ export class SpotifyService {
    * @param query - Search query
    */
   public async searchArtists(query: string) {
-    await this.ensureAccessToken()
-    
     try {
-      const result = await spotifyApi.searchArtists(query)
-      return result.body.artists?.items.map(artist => ({
+      await this.ensureValidToken()
+
+      const response = await spotifyApi.searchArtists(query, { limit: 10 })
+      return response.body.artists.items.map(artist => ({
         id: artist.id,
         name: artist.name,
-        imageUrl: artist.images[0]?.url,
-        genres: artist.genres,
-        popularity: artist.popularity,
+        imageUrl: artist.images[0]?.url || null,
         followers: artist.followers.total,
-        externalUrls: artist.external_urls,
-        uri: artist.uri,
-      })) || []
+        popularity: artist.popularity,
+        genres: artist.genres
+      }))
     } catch (error) {
       console.error('Error searching artists on Spotify:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get artist by Spotify ID
+   * @param spotifyId - Spotify artist ID
+   */
+  public async getArtistById(spotifyId: string) {
+    await this.ensureValidToken()
+    
+    try {
+      const artist = await spotifyApi.getArtist(spotifyId)
+      return {
+        id: artist.body.id,
+        name: artist.body.name,
+        imageUrl: artist.body.images[0]?.url,
+        genres: artist.body.genres,
+        popularity: artist.body.popularity,
+        followers: artist.body.followers.total,
+        externalUrls: artist.body.external_urls,
+        uri: artist.body.uri,
+      }
+    } catch (error) {
+      console.error('Error fetching artist by ID from Spotify:', error)
+      if (error.statusCode === 404) {
+        throw new Error('Artist not found on Spotify')
+      }
       throw error
     }
   }
@@ -145,7 +148,7 @@ export class SpotifyService {
    * @param spotifyId - Spotify artist ID
    */
   public async getLatestAlbum(spotifyId: string) {
-    await this.ensureAccessToken()
+    await this.ensureValidToken()
     
     try {
       const albums = await spotifyApi.getArtistAlbums(spotifyId, { limit: 1 })
@@ -161,10 +164,12 @@ export class SpotifyService {
    * @param spotifyId - Spotify artist ID
    */
   public async getArtistEvents(spotifyId: string) {
-    await this.ensureAccessToken()
+    await this.ensureValidToken()
     // Note: Spotify API doesn't directly provide events data
     // This is a placeholder for future implementation
     // Could be integrated with Songkick, Bandsintown, or similar APIs
     return []
   }
-} 
+}
+
+export const spotifyService = SpotifyService.getInstance() 

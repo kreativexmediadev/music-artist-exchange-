@@ -1,202 +1,324 @@
 'use client';
 
-import { useState } from 'react';
-import { useSession } from 'next-auth/react';
-import { PortfolioData, TimeFrame } from '@/types/portfolio';
+import { useUser } from '@/contexts/UserContext';
+import { formatCurrency, formatPercentage } from '@/utils/format';
+import { useEffect, useState } from 'react';
+import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+} from 'chart.js';
 
-// Mock data - Replace with actual API calls
-const mockPortfolioData: PortfolioData = {
-  totalValue: 25000,
-  totalProfit: 3750,
-  profitPercentage: 17.65,
-  holdings: [
+// Register ChartJS components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
+
+interface PortfolioData {
+  portfolio: Array<{
+    id: string;
+    amount: number;
+    currentValue: number;
+    valueChange24h: number;
+    artist: {
+      id: string;
+      name: string;
+      imageUrl: string;
+      tokenSymbol: string;
+      currentPrice: number;
+      priceChange24h: number;
+    };
+  }>;
+  summary: {
+    totalValue: number;
+    totalValueChange24h: number;
+    percentageChange24h: number;
+  };
+}
+
+// Mock portfolio data
+const mockPortfolio: PortfolioData = {
+  portfolio: [
     {
-      id: 1,
-      artist: 'Drake',
-      tokens: 1000,
-      averagePrice: 22.50,
-      currentPrice: 25.50,
-      value: 25500,
-      profit: 3000,
-      profitPercentage: 13.33,
-      allocation: 40,
+      id: '1',
+      amount: 10,
+      currentValue: 1500,
+      valueChange24h: 50,
+      artist: {
+        id: '1',
+        name: 'Taylor Swift',
+        imageUrl: 'https://i.scdn.co/image/ab6761610000e5eb5a00969a4698c3132a15fbb0',
+        tokenSymbol: 'SWIFT',
+        currentPrice: 150,
+        priceChange24h: 5,
+      },
     },
     {
-      id: 2,
-      artist: 'Taylor Swift',
-      tokens: 500,
-      averagePrice: 40.00,
-      currentPrice: 45.75,
-      value: 22875,
-      profit: 2875,
-      profitPercentage: 14.38,
-      allocation: 35,
-    },
-    {
-      id: 3,
-      artist: 'The Weeknd',
-      tokens: 450,
-      averagePrice: 30.00,
-      currentPrice: 32.80,
-      value: 14760,
-      profit: 1260,
-      profitPercentage: 9.33,
-      allocation: 25,
+      id: '2',
+      amount: 5,
+      currentValue: 600,
+      valueChange24h: -20,
+      artist: {
+        id: '2',
+        name: 'Drake',
+        imageUrl: 'https://i.scdn.co/image/ab6761610000e5eb4293385d324db8558179afd9',
+        tokenSymbol: 'DRAKE',
+        currentPrice: 120,
+        priceChange24h: -4,
+      },
     },
   ],
-  recentTransactions: [
-    {
-      id: 1,
-      type: 'BUY',
-      artist: 'Drake',
-      tokens: 100,
-      price: 25.50,
-      total: 2550,
-      timestamp: '2024-03-15T10:30:00Z',
-    },
-    {
-      id: 2,
-      type: 'SELL',
-      artist: 'Taylor Swift',
-      tokens: 50,
-      price: 45.75,
-      total: 2287.50,
-      timestamp: '2024-03-15T09:15:00Z',
-    },
-  ],
+  summary: {
+    totalValue: 2100,
+    totalValueChange24h: 30,
+    percentageChange24h: 1.5,
+  },
+};
+
+// Mock chart data
+const generateChartData = () => {
+  const labels = Array.from({ length: 24 }, (_, i) => `${i}:00`);
+  const data = Array.from({ length: 24 }, () => Math.random() * 1000 + 1500);
+  return { labels, data };
 };
 
 export default function PortfolioPage() {
-  const { data: session } = useSession();
-  const [timeframe, setTimeframe] = useState<TimeFrame>('1D');
+  const portfolio = mockPortfolio;
+  const [chartData, setChartData] = useState(generateChartData());
+  const [selectedTimeframe, setSelectedTimeframe] = useState('24h');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Simulate real-time updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setChartData(prev => ({
+        ...prev,
+        data: prev.data.map(value => value * (1 + (Math.random() - 0.5) * 0.02)),
+      }));
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const chartConfig = {
+    labels: chartData.labels,
+    datasets: [
+      {
+        label: 'Portfolio Value',
+        data: chartData.data,
+        borderColor: 'rgb(99, 102, 241)',
+        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+        fill: true,
+        tension: 0.4,
+      },
+    ],
+  };
+
+  const chartOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        display: false,
+      },
+      tooltip: {
+        mode: 'index' as const,
+        intersect: false,
+      },
+    },
+    scales: {
+      y: {
+        beginAtZero: false,
+        grid: {
+          display: true,
+          color: 'rgba(0, 0, 0, 0.1)',
+        },
+      },
+      x: {
+        grid: {
+          display: false,
+        },
+      },
+    },
+    interaction: {
+      mode: 'nearest' as const,
+      axis: 'x' as const,
+      intersect: false,
+    },
+  };
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(() => {
+      setChartData(generateChartData());
+      setIsRefreshing(false);
+    }, 1000);
+  };
 
   return (
     <div className="space-y-6">
-      {/* Portfolio Header */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-white">Portfolio</h1>
-        <div className="flex space-x-2">
-          {(['1D', '1W', '1M', '1Y'] as TimeFrame[]).map((tf) => (
+      {/* Portfolio Overview Card */}
+      <div className="bg-white shadow rounded-lg p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Portfolio Overview</h2>
+          <div className="flex space-x-2">
             <button
-              key={tf}
-              onClick={() => setTimeframe(tf)}
-              className={`px-3 py-1 rounded ${
-                timeframe === tf
-                  ? 'bg-accent-yellow text-dark'
-                  : 'bg-dark-card text-gray-300 hover:bg-gray-800'
+              onClick={handleRefresh}
+              className={`px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-md hover:bg-indigo-100 transition-colors ${
+                isRefreshing ? 'animate-spin' : ''
               }`}
             >
-              {tf}
+              ↻ Refresh
             </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Portfolio Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="card p-6">
-          <h2 className="text-lg font-semibold text-gray-300 mb-4">Total Value</h2>
-          <div className="space-y-2">
-            <div className="text-3xl font-bold text-white">
-              ${mockPortfolioData.totalValue.toLocaleString()}
-            </div>
-            <div className={`text-sm ${mockPortfolioData.totalProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {mockPortfolioData.totalProfit >= 0 ? '+' : ''}
-              ${mockPortfolioData.totalProfit.toLocaleString()} ({mockPortfolioData.profitPercentage}%)
-            </div>
+            <select
+              value={selectedTimeframe}
+              onChange={(e) => setSelectedTimeframe(e.target.value)}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="24h">24h</option>
+              <option value="7d">7d</option>
+              <option value="30d">30d</option>
+              <option value="1y">1y</option>
+            </select>
           </div>
         </div>
 
-        <div className="card p-6">
-          <h2 className="text-lg font-semibold text-gray-300 mb-4">Portfolio Allocation</h2>
-          <div className="space-y-4">
-            {mockPortfolioData.holdings.map((holding) => (
-              <div key={holding.id} className="flex items-center space-x-2">
-                <div className="w-full bg-dark rounded-full h-2">
-                  <div
-                    className="bg-accent-yellow rounded-full h-2"
-                    style={{ width: `${holding.allocation}%` }}
-                  />
-                </div>
-                <span className="text-sm text-gray-300 whitespace-nowrap">
-                  {holding.artist} ({holding.allocation}%)
-                </span>
-              </div>
-            ))}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="bg-gradient-to-br from-indigo-50 to-white p-6 rounded-lg border border-indigo-100">
+            <h3 className="text-sm font-medium text-gray-500">Total Value</h3>
+            <p className="mt-2 text-3xl font-bold text-gray-900">
+              {formatCurrency(portfolio.summary.totalValue)}
+            </p>
+          </div>
+          <div className="bg-gradient-to-br from-indigo-50 to-white p-6 rounded-lg border border-indigo-100">
+            <h3 className="text-sm font-medium text-gray-500">24h Change</h3>
+            <p className={`mt-2 text-3xl font-bold ${
+              portfolio.summary.totalValueChange24h >= 0 ? 'text-green-600' : 'text-red-600'
+            }`}>
+              {formatCurrency(portfolio.summary.totalValueChange24h)}
+            </p>
+          </div>
+          <div className="bg-gradient-to-br from-indigo-50 to-white p-6 rounded-lg border border-indigo-100">
+            <h3 className="text-sm font-medium text-gray-500">24h Change %</h3>
+            <p className={`mt-2 text-3xl font-bold ${
+              portfolio.summary.percentageChange24h >= 0 ? 'text-green-600' : 'text-red-600'
+            }`}>
+              {formatPercentage(portfolio.summary.percentageChange24h)}
+            </p>
           </div>
         </div>
 
-        <div className="card p-6">
-          <h2 className="text-lg font-semibold text-gray-300 mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <button className="btn-primary py-2">Buy Tokens</button>
-            <button className="btn-secondary py-2">Sell Tokens</button>
-          </div>
+        {/* Portfolio Chart */}
+        <div className="h-64">
+          <Line data={chartConfig} options={chartOptions} />
         </div>
       </div>
 
       {/* Holdings Table */}
-      <div className="card p-6">
-        <h2 className="text-lg font-semibold text-gray-300 mb-4">Holdings</h2>
+      <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold text-gray-900">Holdings</h2>
+            <div className="flex space-x-2">
+              <button className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition-colors">
+                Buy
+              </button>
+              <button className="px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-md hover:bg-indigo-100 transition-colors">
+                Sell
+              </button>
+            </div>
+          </div>
+        </div>
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="text-left text-gray-400 border-b border-gray-800">
-                <th className="pb-4">Artist</th>
-                <th className="pb-4">Tokens</th>
-                <th className="pb-4">Avg. Price</th>
-                <th className="pb-4">Current Price</th>
-                <th className="pb-4">Value</th>
-                <th className="pb-4">Profit/Loss</th>
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Artist
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Amount
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Current Price
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Value
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  24h Change
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
-            <tbody>
-              {mockPortfolioData.holdings.map((holding) => (
-                <tr key={holding.id} className="border-b border-gray-800">
-                  <td className="py-4">
-                    <div className="font-medium text-white">{holding.artist}</div>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {portfolio.portfolio.map((holding) => (
+                <tr key={holding.artist.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="h-10 w-10 flex-shrink-0">
+                        <img
+                          className="h-10 w-10 rounded-full"
+                          src={holding.artist.imageUrl}
+                          alt={holding.artist.name}
+                          onError={(e) => {
+                            e.currentTarget.src = '/default-artist.png';
+                          }}
+                        />
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900">
+                          {holding.artist.name}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {holding.artist.tokenSymbol}
+                        </div>
+                      </div>
+                    </div>
                   </td>
-                  <td className="py-4">{holding.tokens.toLocaleString()}</td>
-                  <td className="py-4">${holding.averagePrice.toFixed(2)}</td>
-                  <td className="py-4">${holding.currentPrice.toFixed(2)}</td>
-                  <td className="py-4">${holding.value.toLocaleString()}</td>
-                  <td className="py-4">
-                    <div className={holding.profit >= 0 ? 'text-green-400' : 'text-red-400'}>
-                      {holding.profit >= 0 ? '+' : ''}${holding.profit.toLocaleString()} ({holding.profitPercentage}%)
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {holding.amount.toFixed(2)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {formatCurrency(holding.artist.currentPrice)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {formatCurrency(holding.currentValue)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      holding.valueChange24h >= 0
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {formatCurrency(holding.valueChange24h)}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <div className="flex space-x-2">
+                      <button className="text-indigo-600 hover:text-indigo-900">Trade</button>
+                      <button className="text-gray-600 hover:text-gray-900">Details</button>
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-      </div>
-
-      {/* Recent Transactions */}
-      <div className="card p-6">
-        <h2 className="text-lg font-semibold text-gray-300 mb-4">Recent Transactions</h2>
-        <div className="space-y-4">
-          {mockPortfolioData.recentTransactions.map((transaction) => (
-            <div
-              key={transaction.id}
-              className="flex justify-between items-center p-4 bg-dark rounded-lg"
-            >
-              <div>
-                <div className="font-medium text-white">{transaction.artist}</div>
-                <div className="text-sm text-gray-400">
-                  {new Date(transaction.timestamp).toLocaleDateString()}
-                </div>
-              </div>
-              <div className="text-right">
-                <div className={transaction.type === 'BUY' ? 'text-green-400' : 'text-red-400'}>
-                  {transaction.type} {transaction.tokens} @ ${transaction.price}
-                </div>
-                <div className="text-sm text-gray-400">
-                  ${transaction.total.toLocaleString()}
-                </div>
-              </div>
-            </div>
-          ))}
         </div>
       </div>
     </div>

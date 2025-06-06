@@ -8,37 +8,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Authentication system using NextAuth.js
-  - Email/Password authentication
-  - Google OAuth provider configuration
-  - Protected routes and session management
-  - Custom login/signup pages
-  - JWT-based session handling with 30-minute timeout
-
-- Trading interface implementation
-  - Market overview component with real-time data
-  - TradingView chart integration using Lightweight Charts
-  - Order book visualization
-  - Trading form with market/limit order support
-  - Real-time price updates and calculations
-
-- Dashboard layout and navigation
-  - Responsive sidebar navigation
-  - Protected dashboard routes
-  - Portfolio page setup
-  - Trading page integration
+- Initial project setup with Next.js and TypeScript
+- Artist tokenization system
+- Real-time price updates
+- Portfolio management
+- Transaction history
+- Artist analytics
+- Responsive design
+- Real-time updates with SWR
+- Loading states and error boundaries
+- Toast notifications
+- Mobile optimizations
 
 ### Changed
-- Updated project structure to Next.js 14 app directory
-- Implemented dark theme with yellow accents
-- Enhanced TypeScript type definitions
-- Improved documentation and codebase organization
+- Enhanced loading states with skeleton loading
+- Improved error handling with error boundaries
+- Added toast notifications for better user feedback
+- Optimized mobile layouts and interactions
 
-### Security
-- Added JWT-based authentication
-- Implemented protected API routes
-- Added session management
-- Enhanced input validation
+### Fixed
+- Mobile responsiveness issues
+- Loading state flickering
+- Error handling edge cases
 
-## [0.1.0] - 2024-03-XX
-- Initial release with basic project setup 
+## [0.1.0] - 2024-03-19
+### Added
+- Initial release
+- Basic project structure
+- Core functionality implementation 
